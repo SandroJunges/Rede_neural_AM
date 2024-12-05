@@ -38,12 +38,12 @@ Ele inclui funções de ativação, funções de perda, retropropagação e um m
   - orçamento para anúncio em rádio
   - receita gerada pelas vendas
  
-  ### Classificação multiclasse
+  ### Classificação Multiclasse
 
   - Fonte: https://www.kaggle.com/datasets/uciml/iris
   - Ele contém dados sobre flores de íris de três espécies diferentes: Setosa, Versicolor e Virginica.
-  - SepalLengthCm: O comprimento da sépala (a parte externa da flor) em centímetros.
   - Classificação com base nos parâmetros de:
+    - SepalLengthCm: O comprimento da sépala (a parte externa da flor) em centímetros. 
     - SepalWidthCm: A largura da sépala em centímetros.
     - PetalLengthCm: O comprimento da pétala (a parte interna da flor) em centímetros.
     - PetalWidthCm: A largura da pétala em centímetros.
@@ -52,3 +52,7 @@ Ele inclui funções de ativação, funções de perda, retropropagação e um m
 ## Execução
 
 Acessar o rede_neural.py na pasta, rodar e selecionar de 1 até 3 pra escolher o modelo desejado (binário, regressão, multiclasse).
+
+## Google Colab
+
+- https://colab.research.google.com/drive/1qnRcsbg0JIYBOBS1X8MIE48Af1MtOl9y?usp=sharing
