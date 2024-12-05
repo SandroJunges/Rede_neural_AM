@@ -7,13 +7,28 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 # Funções de Ativação
+def relu(z):
+    return np.maximum(0, z)
 
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
+def linear(z):
+    return z
+
+# Derivadas das Funções de Ativação
+def relu_derivative(z):
+    return (z > 0).astype(float)
+
 # Dicionários de funções de ativação
 activation_functions = {
-    'sigmoid': sigmoid
+    'relu': relu,
+    'sigmoid': sigmoid,
+    'linear': linear
+}
+
+activation_derivatives = {
+    'relu': relu_derivative
 }
 
 # Funções de Perda
@@ -22,9 +37,13 @@ def binary_loss(y, output):
     output = np.clip(output, epsilon, 1 - epsilon)
     return -np.mean(y * np.log(output) + (1 - y) * np.log(1 - output))
 
+def regression_loss(y, output):
+    return np.mean((output - y) ** 2)
+
 # Dicionário de funções de perda
 loss_functions = {
-    'binary': binary_loss
+    'binary': binary_loss,
+    'regression': regression_loss,
 }
 
 # Classe NeuralNetwork
@@ -34,6 +53,7 @@ class NeuralNetwork:
         self.hidden_neurons = hidden_neurons
         self.output_neurons = output_neurons
         self.activation = activation_functions[activation]
+        self.activation_derivative = activation_derivatives.get(activation)
         self.loss = loss_functions[loss]
         self.learning_rate = learning_rate
         self.task_type = task_type
@@ -44,6 +64,41 @@ class NeuralNetwork:
         self.W2 = np.random.randn(hidden_neurons, output_neurons) * np.sqrt(2 / hidden_neurons)
         self.B2 = np.zeros((1, output_neurons))
     
+    def forward(self, X):
+        self.z1 = X.dot(self.W1) + self.B1
+        self.f1 = self.activation(self.z1)
+        self.z2 = self.f1.dot(self.W2) + self.B2
+
+        if self.task_type == 'binary':
+            return sigmoid(self.z2)
+        elif self.task_type == 'regression':
+            return self.z2
+
+    def backward(self, X, y, output):
+        m = X.shape[0]
+        if self.task_type == 'binary':
+            delta2 = output - y
+        elif self.task_type == 'regression':
+            y = y.reshape(-1, self.output_neurons)  # Garantir que y tenha a forma correta
+            delta2 = output - y
+
+        dW2 = self.f1.T.dot(delta2) / m
+        dB2 = np.sum(delta2, axis=0, keepdims=True) / m
+
+        if self.activation_derivative:
+            delta1 = delta2.dot(self.W2.T) * self.activation_derivative(self.z1)
+        else:
+            delta1 = delta2.dot(self.W2.T)
+
+        dW1 = X.T.dot(delta1) / m
+        dB1 = np.sum(delta1, axis=0, keepdims=True) / m
+
+        # Atualização dos pesos
+        self.W1 -= self.learning_rate * dW1
+        self.B1 -= self.learning_rate * dB1
+        self.W2 -= self.learning_rate * dW2
+        self.B2 -= self.learning_rate * dB2
+
 # Função para carregar os dados
 def load_data(file_path, task_type):
     data = pd.read_csv(file_path)
@@ -118,6 +173,17 @@ if __name__ == "__main__":
         print(f"Carregando dados para a tarefa: {task_type}...")
         X_train, X_test, y_train, y_test, y_mean, y_std = load_data(dataset_path, task_type)
 
+    elif choice == 2:
+        dataset_path = "advertisement.csv"
+        task_type = 'regression'
+        activation = 'linear'
+        loss = 'regression'
+        output_neurons = 1
+        hidden_neurons = 7
+        learning_rate = 0.005
+        print(f"Carregando dados para a tarefa: {task_type}...")
+        X_train, X_test, y_train, y_test, y_mean, y_std = load_data(dataset_path, task_type)
+
     else:
         print("Escolha inválida.")
         exit()
@@ -135,3 +201,6 @@ if __name__ == "__main__":
 
     print("Iniciando o treinamento...")
     model.train(X_train, y_train, X_test, y_test, epochs=1500)
+
+    print("Avaliando o modelo...")
+    model.evaluate(X_test, y_test, y_mean=y_mean, y_std=y_std)
