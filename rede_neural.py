@@ -3,8 +3,9 @@ warnings.filterwarnings('ignore')
 
 import pandas as pd
 import numpy as np
+from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 # Funções de Ativação
 def relu(z):
@@ -12,6 +13,10 @@ def relu(z):
 
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
+
+def softmax(z):
+    exp_z = np.exp(z - np.max(z, axis=1, keepdims=True))
+    return exp_z / np.sum(exp_z, axis=1, keepdims=True)
 
 def linear(z):
     return z
@@ -24,6 +29,7 @@ def relu_derivative(z):
 activation_functions = {
     'relu': relu,
     'sigmoid': sigmoid,
+    'softmax': softmax,
     'linear': linear
 }
 
@@ -40,10 +46,18 @@ def binary_loss(y, output):
 def regression_loss(y, output):
     return np.mean((output - y) ** 2)
 
+def multiclass_loss(y, output):
+    epsilon = 1e-15
+    output = np.clip(output, epsilon, 1 - epsilon)
+    y = y.astype(int)
+    log_probs = -np.log(output[np.arange(y.shape[0]), y.flatten()])
+    return np.mean(log_probs)
+
 # Dicionário de funções de perda
 loss_functions = {
     'binary': binary_loss,
     'regression': regression_loss,
+    'multiclass': multiclass_loss
 }
 
 # Classe NeuralNetwork
@@ -63,7 +77,7 @@ class NeuralNetwork:
         self.B1 = np.zeros((1, hidden_neurons))
         self.W2 = np.random.randn(hidden_neurons, output_neurons) * np.sqrt(2 / hidden_neurons)
         self.B2 = np.zeros((1, output_neurons))
-    
+
     def forward(self, X):
         self.z1 = X.dot(self.W1) + self.B1
         self.f1 = self.activation(self.z1)
@@ -73,6 +87,8 @@ class NeuralNetwork:
             return sigmoid(self.z2)
         elif self.task_type == 'regression':
             return self.z2
+        elif self.task_type == 'multiclass':
+            return softmax(self.z2)
 
     def backward(self, X, y, output):
         m = X.shape[0]
@@ -81,6 +97,9 @@ class NeuralNetwork:
         elif self.task_type == 'regression':
             y = y.reshape(-1, self.output_neurons)  # Garantir que y tenha a forma correta
             delta2 = output - y
+        elif self.task_type == 'multiclass':
+            delta2 = output
+            delta2[np.arange(m), y.flatten()] -= 1
 
         dW2 = self.f1.T.dot(delta2) / m
         dB2 = np.sum(delta2, axis=0, keepdims=True) / m
@@ -98,6 +117,40 @@ class NeuralNetwork:
         self.B1 -= self.learning_rate * dB1
         self.W2 -= self.learning_rate * dW2
         self.B2 -= self.learning_rate * dB2
+
+    def train(self, X_train, y_train, X_val, y_val, epochs, verbose=True):
+        for epoch in range(epochs):
+            output = self.forward(X_train)
+            loss = self.loss(y_train, output)
+            self.backward(X_train, y_train, output)
+
+            val_output = self.forward(X_val)
+            val_loss = self.loss(y_val, val_output)
+
+            if verbose and epoch % 10 == 0:
+                print(f"Época {epoch+1}/{epochs}, Perda Treino: {loss:.4f}, Perda Validação: {val_loss:.4f}")
+
+    def evaluate(self, X_test, y_test, y_mean=None, y_std=None):
+        predictions = self.forward(X_test)
+
+        if self.task_type == 'binary':
+            predictions = (predictions > 0.5).astype(int)
+            accuracy = accuracy_score(y_test, predictions)
+            print(f"Acurácia: {accuracy:.4f}")
+            return accuracy
+        if task_type == 'regression':
+            # Denormalizar os valores
+            predictions = predictions * y_std + y_mean
+            y_test = y_test * y_std + y_mean
+            mse = mean_squared_error(y_test, predictions)
+            r2 = r2_score(y_test, predictions)
+            print(f"MSE: {mse:.4f}, R² Score: {r2:.4f}")
+            return mse, r2
+        elif self.task_type == 'multiclass':
+            predictions = np.argmax(predictions, axis=1)
+            accuracy = accuracy_score(y_test, predictions)
+            print(f"Acurácia: {accuracy:.4f}")
+            return accuracy
 
 # Função para carregar os dados
 def load_data(file_path, task_type):
@@ -181,6 +234,17 @@ if __name__ == "__main__":
         output_neurons = 1
         hidden_neurons = 7
         learning_rate = 0.005
+        print(f"Carregando dados para a tarefa: {task_type}...")
+        X_train, X_test, y_train, y_test, y_mean, y_std = load_data(dataset_path, task_type)
+
+    elif choice == 3:
+        dataset_path = "iris.csv"
+        task_type = 'multiclass'
+        activation = 'relu'
+        loss = 'multiclass'
+        output_neurons = 3
+        hidden_neurons = 5
+        learning_rate = 0.015
         print(f"Carregando dados para a tarefa: {task_type}...")
         X_train, X_test, y_train, y_test, y_mean, y_std = load_data(dataset_path, task_type)
 
