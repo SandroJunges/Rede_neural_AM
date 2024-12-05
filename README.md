@@ -1,4 +1,8 @@
-# Trabalho Final da disciplina de Aprendizado de Máquina INE5664
+# Trabalho Final da disciplina de Aprendizado de Máquina INE5664 UFSC
+
+## Participantes
+
+- Sandro Ronaldo Junges (20205389), Daniel do Amaral (20200609), Laura Maria Bertassi (20200624)
 
 ## Implementação de uma Rede Neural Multitarefa
 
